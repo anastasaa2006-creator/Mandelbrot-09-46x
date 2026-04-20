@@ -4,29 +4,31 @@ import ru.gr0946x.Converter;
 import ru.gr0946x.ui.fractals.ColorFunction;
 import ru.gr0946x.ui.fractals.Fractal;
 
-import java.awt.image.BufferedImage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.awt.*;
-
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FractalPainter implements Painter {
 
     private final Fractal fractal;
     private final Converter conv;
     private final ColorFunction colorFunction;
-    private BufferedImage image;
-    private volatile boolean isDrawing;
+
+    public FractalPainter(Fractal f, Converter conv, ColorFunction cf) {
+        this.fractal = f;
+        this.conv = conv;
+        this.colorFunction = cf;
+    }
 
     @Override
     public int getWidth() {
-        return conv.getWidth() + 1;  // компенсация: conv.getWidth() возвращает width-1
+        return conv.getWidth() + 1;
     }
 
     @Override
     public int getHeight() {
-        return conv.getHeight() + 1; // компенсация: conv.getHeight() возвращает height-1
+        return conv.getHeight() + 1;
     }
 
     @Override
@@ -39,39 +41,49 @@ public class FractalPainter implements Painter {
         conv.setHeight(height);
     }
 
-    public FractalPainter(Fractal f, Converter conv, ColorFunction cf) {
-        this.fractal = f;
-        this.conv = conv;
-        this.colorFunction = cf;
-    }
-
     @Override
     public void paint(Graphics g) {
-        var w = getWidth();   // теперь корректное значение
-        var h = getHeight();  // теперь корректное значение
+        int w = getWidth();
+        int h = getHeight();
 
-        for (int i = 0; i < w; i++) {
-            for (int j = 0; j < h; j++) {
-                var x = conv.xScr2Crt(i);
-                var y = conv.yScr2Crt(j);
-                var res = fractal.inSetProbability(x, y);
-                g.setColor(colorFunction.getColor(res));
-                g.fillRect(i, j, 1, 1);  // один пиксель
+        if (w <= 0 || h <= 0) return;
+
+        int procs = Runtime.getRuntime().availableProcessors();
+
+        List<Thread> threads = new ArrayList<>();
+
+        for (int k = 0; k < procs; k++) {
+            final int colorIndex = k;
+            int partWidth = w / procs + 1;
+
+            BufferedImage bi = new BufferedImage(partWidth, h, BufferedImage.TYPE_INT_RGB);
+            Graphics biGr = bi.getGraphics();
+
+            Thread th = new Thread(() -> {
+                for (int x = 0; x < partWidth; x++) {
+                    for (int y = 0; y < h; y++) {
+                        double cr = conv.xScr2Crt(colorIndex * (w / procs) + x);
+                        double ci = conv.yScr2Crt(y);
+                        float value = fractal.inSetProbability(cr, ci);
+                        Color color = colorFunction.getColor(value);
+                        biGr.setColor(color);
+                        biGr.fillRect(x, y, 1, 1);
+                    }
+                }
+                synchronized (g) {
+                    g.drawImage(bi, colorIndex * (w / procs), 0, null);
+                }
+            });
+            th.start();
+            threads.add(th);
+        }
+
+        for (Thread th : threads) {
+            try {
+                th.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
-
-    private void renderRows(int startRow, int endRow, int width) {
-        for (int y = startRow; y < endRow; y++) {
-            for (int x = 0; x < width; x++) {
-                double cr = conv.xScr2Crt(x);
-                double ci = conv.yScr2Crt(y);
-                float value = fractal.inSetProbability(cr, ci);
-                Color color = colorFunction.getColor(value);
-                image.setRGB(x, y, color.getRGB());
-            }
-        }
-    }
-
-
 }

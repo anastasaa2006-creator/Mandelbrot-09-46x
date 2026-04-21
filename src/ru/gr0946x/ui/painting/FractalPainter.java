@@ -6,8 +6,9 @@ import ru.gr0946x.ui.fractals.Fractal;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class FractalPainter implements Painter {
 
@@ -48,42 +49,40 @@ public class FractalPainter implements Painter {
 
         if (w <= 0 || h <= 0) return;
 
+        // Создаём буфер изображения
+        BufferedImage image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+
         int procs = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(procs);
 
-        List<Thread> threads = new ArrayList<>();
-
+        // Запускаем задачи
         for (int k = 0; k < procs; k++) {
             final int colorIndex = k;
-            int partWidth = w / procs + 1;
+            int startX = colorIndex * (w / procs);
+            int endX = (colorIndex == procs - 1) ? w : startX + (w / procs);
 
-            BufferedImage bi = new BufferedImage(partWidth, h, BufferedImage.TYPE_INT_RGB);
-            Graphics biGr = bi.getGraphics();
-
-            Thread th = new Thread(() -> {
-                for (int x = 0; x < partWidth; x++) {
+            executor.submit(() -> {
+                for (int x = startX; x < endX; x++) {
                     for (int y = 0; y < h; y++) {
-                        double cr = conv.xScr2Crt(colorIndex * (w / procs) + x);
+                        double cr = conv.xScr2Crt(x);
                         double ci = conv.yScr2Crt(y);
                         float value = fractal.inSetProbability(cr, ci);
                         Color color = colorFunction.getColor(value);
-                        biGr.setColor(color);
-                        biGr.fillRect(x, y, 1, 1);
+                        image.setRGB(x, y, color.getRGB());
                     }
                 }
-                synchronized (g) {
-                    g.drawImage(bi, colorIndex * (w / procs), 0, null);
-                }
             });
-            th.start();
-            threads.add(th);
         }
 
-        for (Thread th : threads) {
-            try {
-                th.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        // Ждём завершения всех задач
+        executor.shutdown();
+        try {
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
+
+        // Рисуем готовое изображение
+        g.drawImage(image, 0, 0, null);
     }
 }

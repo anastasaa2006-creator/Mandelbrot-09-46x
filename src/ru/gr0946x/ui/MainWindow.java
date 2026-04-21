@@ -5,6 +5,9 @@ import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import ru.gr0946x.ui.JuliaWindow;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,6 +20,7 @@ public class MainWindow extends JFrame {
     private final Painter painter;
     private final Fractal mandelbrot;
     private final Converter conv;
+
     public MainWindow(){
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(800, 650));
@@ -40,6 +44,33 @@ public class MainWindow extends JFrame {
             conv.setYShape(yMin, yMax);
             mainPanel.repaint();
         });
+
+        mainPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    double x = conv.xScr2Crt(e.getX());
+                    double y = conv.yScr2Crt(e.getY());
+                    System.out.println("Открытие Жюлиа для точки: " + x + ", " + y);
+
+                    JuliaWindow jw = new JuliaWindow(x, y);
+
+                    // Когда закрывают Жюлиа — восстанавливаем Мандельброт
+                    jw.addWindowListener(new java.awt.event.WindowAdapter() {
+                        @Override
+                        public void windowClosed(java.awt.event.WindowEvent e) {
+                            System.out.println("Жюлиа закрыта, перерисовываю Мандельброт");
+                            conv.setXShape(-2.0, 1.0);
+                            conv.setYShape(-1.0, 1.0);
+                            mainPanel.repaint();
+                        }
+                    });
+
+                    jw.setVisible(true);
+                }
+            }
+        });
+
         setContent();
     }
 

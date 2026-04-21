@@ -1,7 +1,6 @@
 package ru.gr0946x.ui;
 
 import ru.gr0946x.Converter;
-import ru.gr0946x.ui.fractals.ColorFunction;
 import ru.gr0946x.ui.fractals.Julia;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
@@ -32,15 +31,9 @@ public class JuliaWindow extends JFrame {
 
         painter = new FractalPainter(julia, conv, (value) -> {
             if (value >= 0.999f) return Color.BLACK;
-
-            float r = (float) Math.sin(2.5 * Math.PI * value);
-            float g = (float) Math.cos(1.8 * Math.PI * value + 0.5);
-            float b = (float) Math.sin(3.2 * Math.PI * value);
-
-            r = Math.abs(r);
-            g = Math.abs(g);
-            b = Math.abs(b);
-
+            var r = (float) Math.abs(Math.sin(5 * value));
+            var g = (float) Math.abs(Math.cos(8 * value) * Math.sin(3 * value));
+            var b = (float) Math.abs((Math.sin(7 * value) + Math.cos(15 * value)) / 2f);
             return new Color(r, g, b);
         });
 

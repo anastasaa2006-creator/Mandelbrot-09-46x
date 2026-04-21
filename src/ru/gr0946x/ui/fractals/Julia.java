@@ -29,7 +29,7 @@ public class Julia implements Fractal {
         int i = 0;
         while (z.getAbsoluteValue2() < R2 && ++i < maxIterations) {
             z.timesAssign(z);
-            z.plusAssign(c);   
+            z.plusAssign(c);
         }
 
         return (float) i / maxIterations;

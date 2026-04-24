@@ -5,9 +5,12 @@ import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
+import ru.gr0946x.ui.JuliaWindow;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import static java.lang.Math.*;
 
@@ -40,6 +43,29 @@ public class MainWindow extends JFrame {
             conv.setXShape(xMin, xMax);
             conv.setYShape(yMin, yMax);
             mainPanel.repaint();
+        });
+
+        mainPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    double x = conv.xScr2Crt(e.getX());
+                    double y = conv.yScr2Crt(e.getY());
+                    JuliaWindow jw = new JuliaWindow(x, y);
+
+                    // ВОССТАНАВЛИВАЕМ КОНВЕРТЕР ПОСЛЕ ЗАКРЫТИЯ ОКНА
+                    jw.addWindowListener(new java.awt.event.WindowAdapter() {
+                        @Override
+                        public void windowClosed(java.awt.event.WindowEvent e) {
+                            conv.setXShape(-2.0, 1.0);
+                            conv.setYShape(-1.0, 1.0);
+                            mainPanel.repaint();
+                        }
+                    });
+
+                    jw.setVisible(true);
+                }
+            }
         });
 
         createMenuBar();
@@ -94,7 +120,24 @@ public class MainWindow extends JFrame {
 
         JMenu fractalMenu = new JMenu("Фрактал");
 
+        // ========== ПУНКТ МЕНЮ ДЛЯ ЖЮЛИА (С ОБРАБОТЧИКОМ) ==========
         JMenuItem juliaItem = new JMenuItem("Показать Жюлиа по точке...");
+        juliaItem.addActionListener(e -> {
+            String xInput = JOptionPane.showInputDialog(this, "Введите X (действительная часть)");
+            if (xInput != null) {
+                try {
+                    double x = Double.parseDouble(xInput);
+                    String yInput = JOptionPane.showInputDialog(this, "Введите Y (мнимая часть)");
+                    if (yInput != null) {
+                        double y = Double.parseDouble(yInput);
+                        JuliaWindow jw = new JuliaWindow(x, y);
+                        jw.setVisible(true);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Некорректный ввод координат");
+                }
+            }
+        });
         fractalMenu.add(juliaItem);
 
         fractalMenu.addSeparator();

@@ -19,6 +19,9 @@ import java.io.ObjectOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import java.io.ObjectInputStream;
+import java.io.FileInputStream;
+
 import static java.lang.Math.*;
 
 public class MainWindow extends JFrame {
@@ -115,8 +118,28 @@ public class MainWindow extends JFrame {
             }
         }
     }
-    // ==================== МЕТОДЫ ДЛЯ ОТМЕНЫ ДЕЙСТВИЙ (UNDO/REDO) ====================
 
+    private void openFractalFile() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Открыть фрактал");
+        chooser.setFileFilter(new FileNameExtensionFilter("Файлы фрактала (*.frac)", "frac"));
+
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                FractalState state = (FractalState) ois.readObject();
+                saveCurrentStateToUndo();
+                clearRedoStack();
+                applyState(state);
+                mainPanel.repaint();
+                JOptionPane.showMessageDialog(this, "Фрактал загружен!");
+            } catch (IOException | ClassNotFoundException ex) {
+                JOptionPane.showMessageDialog(this, "Ошибка загрузки: " + ex.getMessage());
+            }
+        }
+    }
+    // ==================== МЕТОДЫ ДЛЯ ОТМЕНЫ ДЕЙСТВИЙ (UNDO/REDO) ====================
     private void saveCurrentStateToUndo() {
         // Получаем актуальные размеры из панели, а не из painter
         int currentWidth = mainPanel != null ? mainPanel.getWidth() : painter.getWidth();

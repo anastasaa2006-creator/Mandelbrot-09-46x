@@ -5,7 +5,6 @@ import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
-import ru.gr0946x.ui.JuliaWindow;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,25 +20,42 @@ public class MainWindow extends JFrame {
     private final Fractal mandelbrot;
     private final Converter conv;
 
-    public MainWindow(){
+    public MainWindow() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(800, 650));
         mandelbrot = new Mandelbrot();
         conv = new Converter(-2.0, 1.0, -1.0, 1.0);
-        painter = new FractalPainter(mandelbrot, conv, (value)->{
+        painter = new FractalPainter(mandelbrot, conv, (value) -> {
             if (value == 1.0) return Color.BLACK;
-            var r = (float)abs(sin(5 * value));
-            var g = (float)abs(cos(8 * value) * sin(3 * value));
-            var b = (float)abs((sin(7 * value) + cos(15 * value)) / 2f);
+            var r = (float) abs(sin(5 * value));
+            var g = (float) abs(cos(8 * value) * sin(3 * value));
+            var b = (float) abs((sin(7 * value) + cos(15 * value)) / 2f);
             return new Color(r, g, b);
         });
         mainPanel = new SelectablePanel(painter, conv);
         mainPanel.setBackground(Color.WHITE);
-        mainPanel.addSelectListener((r)->{
-            var xMin = conv.xScr2Crt(r.x);
-            var xMax = conv.xScr2Crt(r.x + r.width);
-            var yMin = conv.yScr2Crt(r.y + r.height);
-            var yMax = conv.yScr2Crt(r.y);
+        mainPanel.addSelectListener((r) -> {
+            double xMin = conv.xScr2Crt(r.x);
+            double xMax = conv.xScr2Crt(r.x + r.width);
+            double yMin = conv.yScr2Crt(r.y + r.height);
+            double yMax = conv.yScr2Crt(r.y);
+
+            double xRange = xMax - xMin;
+            double yRange = yMax - yMin;
+            double aspect = (double) getWidth() / getHeight();
+
+            if (xRange / yRange > aspect) {
+                double newYRange = xRange / aspect;
+                double centerY = (yMin + yMax) / 2;
+                yMin = centerY - newYRange / 2;
+                yMax = centerY + newYRange / 2;
+            } else {
+                double newXRange = yRange * aspect;
+                double centerX = (xMin + xMax) / 2;
+                xMin = centerX - newXRange / 2;
+                xMax = centerX + newXRange / 2;
+            }
+
             conv.setXShape(xMin, xMax);
             conv.setYShape(yMin, yMax);
             mainPanel.repaint();
@@ -52,16 +68,6 @@ public class MainWindow extends JFrame {
                     double x = conv.xScr2Crt(e.getX());
                     double y = conv.yScr2Crt(e.getY());
                     JuliaWindow jw = new JuliaWindow(x, y);
-
-                    jw.addWindowListener(new java.awt.event.WindowAdapter() {
-                        @Override
-                        public void windowClosed(java.awt.event.WindowEvent e) {
-                            conv.setXShape(-2.0, 1.0);
-                            conv.setYShape(-1.0, 1.0);
-                            mainPanel.repaint();
-                        }
-                    });
-
                     jw.setVisible(true);
                 }
             }
@@ -97,62 +103,34 @@ public class MainWindow extends JFrame {
         fileMenu.add(exitItem);
 
         JMenu editMenu = new JMenu("Правка");
-
         JMenuItem undoItem = new JMenuItem("Отменить (Ctrl+Z)");
         editMenu.add(undoItem);
-
         JMenuItem redoItem = new JMenuItem("Вернуть (Ctrl+Y)");
         editMenu.add(redoItem);
 
         JMenu viewMenu = new JMenu("Вид");
-
         JMenuItem zoomInItem = new JMenuItem("Увеличить");
         viewMenu.add(zoomInItem);
-
         JMenuItem zoomOutItem = new JMenuItem("Уменьшить");
         viewMenu.add(zoomOutItem);
-
         viewMenu.addSeparator();
-
         JMenuItem resetViewItem = new JMenuItem("Сбросить вид");
         viewMenu.add(resetViewItem);
 
         JMenu fractalMenu = new JMenu("Фрактал");
-
         JMenuItem juliaItem = new JMenuItem("Показать Жюлиа по точке...");
-        juliaItem.addActionListener(e -> {
-            String xInput = JOptionPane.showInputDialog(this, "Введите X (действительная часть)");
-            if (xInput != null) {
-                try {
-                    double x = Double.parseDouble(xInput);
-                    String yInput = JOptionPane.showInputDialog(this, "Введите Y (мнимая часть)");
-                    if (yInput != null) {
-                        double y = Double.parseDouble(yInput);
-                        JuliaWindow jw = new JuliaWindow(x, y);
-                        jw.setVisible(true);
-                    }
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(this, "Некорректный ввод координат");
-                }
-            }
-        });
         fractalMenu.add(juliaItem);
-
         fractalMenu.addSeparator();
-
         JMenuItem colorSchemeItem = new JMenuItem("Цветовая схема");
         fractalMenu.add(colorSchemeItem);
-
         JMenuItem iterationsItem = new JMenuItem("Настройка итераций");
         fractalMenu.add(iterationsItem);
 
         JMenu tourMenu = new JMenu("Экскурсия");
-
         JMenuItem startTourItem = new JMenuItem("Начать экскурсию...");
         tourMenu.add(startTourItem);
 
         JMenu helpMenu = new JMenu("Помощь");
-
         JMenuItem aboutItem = new JMenuItem("О программе");
         aboutItem.addActionListener(e -> showAboutDialog());
         helpMenu.add(aboutItem);
@@ -163,7 +141,6 @@ public class MainWindow extends JFrame {
         menuBar.add(fractalMenu);
         menuBar.add(tourMenu);
         menuBar.add(helpMenu);
-
         setJMenuBar(menuBar);
     }
 
@@ -174,18 +151,16 @@ public class MainWindow extends JFrame {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void setContent(){
+    private void setContent() {
         var gl = new GroupLayout(getContentPane());
         setLayout(gl);
         gl.setVerticalGroup(gl.createSequentialGroup()
                 .addGap(8)
                 .addComponent(mainPanel, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE)
-                .addGap(8)
-        );
+                .addGap(8));
         gl.setHorizontalGroup(gl.createSequentialGroup()
                 .addGap(8)
                 .addComponent(mainPanel, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE)
-                .addGap(8)
-        );
+                .addGap(8));
     }
 }

@@ -53,7 +53,6 @@ public class MainWindow extends JFrame {
                     double y = conv.yScr2Crt(e.getY());
                     JuliaWindow jw = new JuliaWindow(x, y);
 
-                    // ВОССТАНАВЛИВАЕМ КОНВЕРТЕР ПОСЛЕ ЗАКРЫТИЯ ОКНА
                     jw.addWindowListener(new java.awt.event.WindowAdapter() {
                         @Override
                         public void windowClosed(java.awt.event.WindowEvent e) {
@@ -120,7 +119,6 @@ public class MainWindow extends JFrame {
 
         JMenu fractalMenu = new JMenu("Фрактал");
 
-        // ========== ПУНКТ МЕНЮ ДЛЯ ЖЮЛИА (С ОБРАБОТЧИКОМ) ==========
         JMenuItem juliaItem = new JMenuItem("Показать Жюлиа по точке...");
         juliaItem.addActionListener(e -> {
             String xInput = JOptionPane.showInputDialog(this, "Введите X (действительная часть)");

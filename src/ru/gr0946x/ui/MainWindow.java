@@ -75,6 +75,15 @@ public class MainWindow extends JFrame {
                     double x = conv.xScr2Crt(e.getX());
                     double y = conv.yScr2Crt(e.getY());
                     JuliaWindow jw = new JuliaWindow(x, y);
+                    jw.addWindowListener(new java.awt.event.WindowAdapter() {
+                        @Override
+                        public void windowClosed(java.awt.event.WindowEvent e) {
+                            conv.setXShape(-2.0, 1.0);
+                            conv.setYShape(-1.0, 1.0);
+                            mainPanel.repaint();
+                        }
+                    });
+
                     jw.setVisible(true);
                 }
             }

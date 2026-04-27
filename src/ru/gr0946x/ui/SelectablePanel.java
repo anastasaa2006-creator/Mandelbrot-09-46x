@@ -101,4 +101,7 @@ public class SelectablePanel extends PaintPanel {
             g.setPaintMode();
         }
     }
+    public void updateConverter(Converter conv) {
+        this.conv = conv;
+    }
 }

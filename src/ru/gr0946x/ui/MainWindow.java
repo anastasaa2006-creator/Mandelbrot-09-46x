@@ -268,10 +268,17 @@ public class MainWindow extends JFrame {
     }
 
     private void saveCurrentStateToUndo() {
-        int currentWidth = mainPanel != null ? mainPanel.getWidth() : painter.getWidth();
-        int currentHeight = mainPanel != null ? mainPanel.getHeight() : painter.getHeight();
-        if (currentWidth <= 0) currentWidth = painter.getWidth();
-        if (currentHeight <= 0) currentHeight = painter.getHeight();
+        // Берем реальные размеры из панели
+        int currentWidth = mainPanel.getWidth();
+        int currentHeight = mainPanel.getHeight();
+
+        // Если панель еще не отрисована, берем размеры окна
+        if (currentWidth <= 0) currentWidth = getWidth();
+        if (currentHeight <= 0) currentHeight = getHeight();
+
+        // Если все еще 0, ставим значения по умолчанию
+        if (currentWidth <= 0) currentWidth = 800;
+        if (currentHeight <= 0) currentHeight = 650;
 
         FractalState state = new FractalState(
                 conv.getXMin(), conv.getXMax(),
@@ -281,7 +288,6 @@ public class MainWindow extends JFrame {
         undoStack.push(state);
         while (undoStack.size() > MAX_UNDO_STEPS) undoStack.remove(0);
     }
-
     private void clearRedoStack() {
         redoStack.clear();
     }
@@ -291,15 +297,30 @@ public class MainWindow extends JFrame {
             JOptionPane.showMessageDialog(this, "Нет действий для отмены", "Отмена", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+
+        // Сохраняем текущее состояние в redo
         FractalState currentState = new FractalState(
                 conv.getXMin(), conv.getXMax(),
                 conv.getYMin(), conv.getYMax(),
-                mainPanel != null ? mainPanel.getWidth() : painter.getWidth(),
-                mainPanel != null ? mainPanel.getHeight() : painter.getHeight()
+                mainPanel.getWidth(), mainPanel.getHeight()
         );
         redoStack.push(currentState);
+
+        // Удаляем текущее состояние
         undoStack.pop();
-        applyState(undoStack.peek());
+
+        // Восстанавливаем предыдущее
+        FractalState previousState = undoStack.peek();
+
+        // Применяем
+        conv.setXShape(previousState.getXMin(), previousState.getXMax());
+        conv.setYShape(previousState.getYMin(), previousState.getYMax());
+        painter.setWidth(previousState.getWidth());
+        painter.setHeight(previousState.getHeight());
+        mainPanel.updateConverter(conv);
+
+        // Перерисовываем
+        mainPanel.revalidate();
         mainPanel.repaint();
     }
 
@@ -317,12 +338,17 @@ public class MainWindow extends JFrame {
     private void applyState(FractalState state) {
         conv.setXShape(state.getXMin(), state.getXMax());
         conv.setYShape(state.getYMin(), state.getYMax());
+
+        // Устанавливаем размеры painter
         painter.setWidth(state.getWidth());
         painter.setHeight(state.getHeight());
-        if (mainPanel != null) {
-            mainPanel.setPreferredSize(new Dimension(state.getWidth(), state.getHeight()));
-            mainPanel.revalidate();
-        }
+
+        // Обновляем конвертер в панели
+        mainPanel.updateConverter(conv);
+
+        // Перерисовываем
+        mainPanel.revalidate();
+        mainPanel.repaint();
     }
 
     private void setupUndoRedoShortcuts() {

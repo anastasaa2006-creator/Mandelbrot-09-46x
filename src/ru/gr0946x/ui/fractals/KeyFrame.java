@@ -1,3 +1,4 @@
+//Для хранения ключевых кадров экскурсии
 package ru.gr0946x.model;
 
 import java.io.Serializable;

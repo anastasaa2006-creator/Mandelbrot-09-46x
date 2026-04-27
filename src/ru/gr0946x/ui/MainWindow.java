@@ -6,11 +6,21 @@ import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
+import ru.gr0946x.model.FractalState;
 
+import java.io.File;
+import java.util.Stack;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.ObjectOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.FileInputStream;
 import static java.lang.Math.*;
 
 public class MainWindow extends JFrame {
@@ -19,6 +29,10 @@ public class MainWindow extends JFrame {
     private final Painter painter;
     private final Fractal mandelbrot;
     private final Converter conv;
+  
+    private Stack<FractalState> undoStack = new Stack<>();
+    private Stack<FractalState> redoStack = new Stack<>();
+    private static final int MAX_UNDO_STEPS = 100;
 
     private static class DefaultColorScheme implements ColorScheme {
         @Override
@@ -42,6 +56,10 @@ public class MainWindow extends JFrame {
         mainPanel = new SelectablePanel(painter, conv);
         mainPanel.setBackground(Color.WHITE);
         mainPanel.addSelectListener((r) -> {
+            
+            saveCurrentStateToUndo();
+            clearRedoStack();
+
             double xMin = conv.xScr2Crt(r.x);
             double xMax = conv.xScr2Crt(r.x + r.width);
             double yMin = conv.yScr2Crt(r.y + r.height);
@@ -83,14 +101,16 @@ public class MainWindow extends JFrame {
                             mainPanel.repaint();
                         }
                     });
-
                     jw.setVisible(true);
                 }
             }
         });
-
         createMenuBar();
+
         setContent();
+
+        saveCurrentStateToUndo();
+        setupUndoRedoShortcuts();
     }
 
     private void createMenuBar() {
@@ -99,16 +119,17 @@ public class MainWindow extends JFrame {
         JMenu fileMenu = new JMenu("Файл");
 
         JMenuItem saveFracItem = new JMenuItem("Сохранить как .frac...");
+        saveFracItem.addActionListener(e -> saveFractalFile());
         fileMenu.add(saveFracItem);
 
         JMenuItem openFracItem = new JMenuItem("Открыть .frac...");
+        openFracItem.addActionListener(e -> openFractalFile());
         fileMenu.add(openFracItem);
 
         fileMenu.addSeparator();
 
         JMenuItem saveJpgItem = new JMenuItem("Сохранить как JPG...");
         fileMenu.add(saveJpgItem);
-
         JMenuItem savePngItem = new JMenuItem("Сохранить как PNG...");
         fileMenu.add(savePngItem);
 
@@ -120,8 +141,10 @@ public class MainWindow extends JFrame {
 
         JMenu editMenu = new JMenu("Правка");
         JMenuItem undoItem = new JMenuItem("Отменить (Ctrl+Z)");
+        undoItem.addActionListener(e -> undo());
         editMenu.add(undoItem);
         JMenuItem redoItem = new JMenuItem("Вернуть (Ctrl+Y)");
+        redoItem.addActionListener(e -> redo());
         editMenu.add(redoItem);
 
         JMenu viewMenu = new JMenu("Вид");
@@ -194,5 +217,122 @@ public class MainWindow extends JFrame {
                 .addGap(8)
                 .addComponent(mainPanel, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE)
                 .addGap(8));
+    }
+
+    private void saveFractalFile() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Сохранить фрактал");
+        chooser.setFileFilter(new FileNameExtensionFilter("Файлы фрактала (*.frac)", "frac"));
+
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            String path = file.getAbsolutePath();
+
+            if (!path.toLowerCase().endsWith(".frac")) {
+                file = new File(path + ".frac");
+            }
+
+            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+                FractalState state = new FractalState(
+                        conv.getXMin(), conv.getXMax(),
+                        conv.getYMin(), conv.getYMax(),
+                        painter.getWidth(), painter.getHeight()
+                );
+                oos.writeObject(state);
+                JOptionPane.showMessageDialog(this, "Фрактал сохранён!");
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this, "Ошибка сохранения: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void openFractalFile() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Открыть фрактал");
+        chooser.setFileFilter(new FileNameExtensionFilter("Файлы фрактала (*.frac)", "frac"));
+
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+                FractalState state = (FractalState) ois.readObject();
+                saveCurrentStateToUndo();
+                clearRedoStack();
+                applyState(state);
+                mainPanel.repaint();
+                JOptionPane.showMessageDialog(this, "Фрактал загружен!");
+            } catch (IOException | ClassNotFoundException ex) {
+                JOptionPane.showMessageDialog(this, "Ошибка загрузки: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void saveCurrentStateToUndo() {
+        int currentWidth = mainPanel != null ? mainPanel.getWidth() : painter.getWidth();
+        int currentHeight = mainPanel != null ? mainPanel.getHeight() : painter.getHeight();
+        if (currentWidth <= 0) currentWidth = painter.getWidth();
+        if (currentHeight <= 0) currentHeight = painter.getHeight();
+
+        FractalState state = new FractalState(
+                conv.getXMin(), conv.getXMax(),
+                conv.getYMin(), conv.getYMax(),
+                currentWidth, currentHeight
+        );
+        undoStack.push(state);
+        while (undoStack.size() > MAX_UNDO_STEPS) undoStack.remove(0);
+    }
+
+    private void clearRedoStack() {
+        redoStack.clear();
+    }
+
+    private void undo() {
+        if (undoStack.size() <= 1) {
+            JOptionPane.showMessageDialog(this, "Нет действий для отмены", "Отмена", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        FractalState currentState = new FractalState(
+                conv.getXMin(), conv.getXMax(),
+                conv.getYMin(), conv.getYMax(),
+                mainPanel != null ? mainPanel.getWidth() : painter.getWidth(),
+                mainPanel != null ? mainPanel.getHeight() : painter.getHeight()
+        );
+        redoStack.push(currentState);
+        undoStack.pop();
+        applyState(undoStack.peek());
+        mainPanel.repaint();
+    }
+
+    private void redo() {
+        if (redoStack.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Нет действий для повтора", "Повтор", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        FractalState stateToRedo = redoStack.pop();
+        saveCurrentStateToUndo();
+        applyState(stateToRedo);
+        mainPanel.repaint();
+    }
+
+    private void applyState(FractalState state) {
+        conv.setXShape(state.getXMin(), state.getXMax());
+        conv.setYShape(state.getYMin(), state.getYMax());
+        painter.setWidth(state.getWidth());
+        painter.setHeight(state.getHeight());
+        if (mainPanel != null) {
+            mainPanel.setPreferredSize(new Dimension(state.getWidth(), state.getHeight()));
+            mainPanel.revalidate();
+        }
+    }
+
+    private void setupUndoRedoShortcuts() {
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ctrl Z"), "undo");
+        getRootPane().getActionMap().put("undo", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { undo(); }
+        });
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ctrl Y"), "redo");
+        getRootPane().getActionMap().put("redo", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) { redo(); }
+        });
     }
 }

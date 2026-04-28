@@ -1,7 +1,7 @@
 package ru.gr0946x.ui.painting;
 
 import ru.gr0946x.ui.fractals.KeyFrame;
-import ru.gr0946x.ui.painting.MainWindow;
+import ru.gr0946x.ui.MainWindow;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,7 +17,7 @@ public class TourDialog extends JDialog {
     private JTextField durationField;
 
     public TourDialog(MainWindow mainWindow) {
-        super(mainWindow, "Экскурсия по фракталу", true);
+        super(mainWindow, "Экскурсия по фракталу", false);
         this.mainWindow = mainWindow;
         setSize(550, 450);
         setLocationRelativeTo(mainWindow);

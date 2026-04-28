@@ -7,6 +7,7 @@ import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
 import ru.gr0946x.ui.fractals.FractalState;
+import ru.gr0946x.ui.painting.TourDialog;
 
 import java.io.File;
 import java.util.Stack;
@@ -185,6 +186,7 @@ public class MainWindow extends JFrame {
 
         JMenu tourMenu = new JMenu("Экскурсия");
         JMenuItem startTourItem = new JMenuItem("Начать экскурсию...");
+        startTourItem.addActionListener(e -> showTourDialog());
         tourMenu.add(startTourItem);
 
         JMenu helpMenu = new JMenu("Помощь");

@@ -1,6 +1,7 @@
 package ru.gr0946x.ui.painting;
 
 import ru.gr0946x.ui.fractals.KeyFrame;
+import ru.gr0946x.ui.painting.MainWindow;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,28 +10,27 @@ import java.util.List;
 
 public class TourDialog extends JDialog {
 
+    private final MainWindow mainWindow;
     private List<KeyFrame> keyframes = new ArrayList<>();
     private DefaultListModel<String> listModel;
     private JList<String> keyframeList;
     private JTextField durationField;
 
-    public TourDialog(JFrame parent) {
-        super(parent, "Экскурсия по фракталу", true);
-        setSize(500, 450);
-        setLocationRelativeTo(parent);
+    public TourDialog(MainWindow mainWindow) {
+        super(mainWindow, "Экскурсия по фракталу", true);
+        this.mainWindow = mainWindow;
+        setSize(550, 450);
+        setLocationRelativeTo(mainWindow);
         setLayout(new BorderLayout());
-
         initComponents();
     }
 
     private void initComponents() {
-        // Список кадров
         listModel = new DefaultListModel<>();
         keyframeList = new JList<>(listModel);
         keyframeList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         add(new JScrollPane(keyframeList), BorderLayout.CENTER);
 
-        // Панель управления
         JPanel controlPanel = new JPanel(new GridLayout(2, 2, 10, 10));
         controlPanel.setBorder(BorderFactory.createTitledBorder("Управление"));
 
@@ -48,7 +48,6 @@ public class TourDialog extends JDialog {
 
         add(controlPanel, BorderLayout.NORTH);
 
-        // Кнопки внизу
         JPanel buttonPanel = new JPanel(new FlowLayout());
 
         JButton startButton = new JButton("Начать экскурсию");
@@ -63,27 +62,45 @@ public class TourDialog extends JDialog {
     }
 
     private void addCurrentFrame() {
-        // Заглушка - потом добавим реальные координаты
-        listModel.addElement("Кадр " + (listModel.size() + 1));
+        try {
+            double duration = Double.parseDouble(durationField.getText().trim());
+            if (duration < 0.5) duration = 0.5;
+
+            KeyFrame frame = new KeyFrame(
+                    mainWindow.getCurrentXMin(),
+                    mainWindow.getCurrentXMax(),
+                    mainWindow.getCurrentYMin(),
+                    mainWindow.getCurrentYMax(),
+                    duration
+            );
+            keyframes.add(frame);
+
+            listModel.addElement(String.format("%d: [%.2f,%.2f] x [%.2f,%.2f] (%.1f сек)",
+                    keyframes.size(),
+                    frame.getXMin(), frame.getXMax(),
+                    frame.getYMin(), frame.getYMax(),
+                    duration
+            ));
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Введите число!");
+        }
     }
 
     private void removeFrame() {
         int index = keyframeList.getSelectedIndex();
         if (index >= 0) {
+            keyframes.remove(index);
             listModel.remove(index);
         }
     }
 
     private void startTour() {
-        if (listModel.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Добавьте хотя бы 2 кадра!");
-            return;
-        }
-        if (listModel.size() < 2) {
+        if (keyframes.size() < 2) {
             JOptionPane.showMessageDialog(this, "Добавьте минимум 2 кадра!");
             return;
         }
-        JOptionPane.showMessageDialog(this, "Экскурсия начнётся!");
+        new Thread(() -> mainWindow.animateTour(keyframes)).start();
         dispose();
     }
 }

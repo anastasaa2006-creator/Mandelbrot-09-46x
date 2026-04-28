@@ -10,12 +10,12 @@ import java.awt.event.ComponentEvent;
 public class PaintPanel extends JPanel {
 
     private Painter painter;
-    public PaintPanel(Painter painter){
+
+    public PaintPanel(Painter painter) {
         this.painter = painter;
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                super.componentResized(e);
                 painter.setWidth(getWidth());
                 painter.setHeight(getHeight());
                 repaint();
@@ -23,11 +23,14 @@ public class PaintPanel extends JPanel {
         });
     }
 
+    public void setPainter(Painter painter) {
+        this.painter = painter;
+        repaint();
+    }
+
     @Override
-    public void paint(Graphics g){
+    public void paint(Graphics g) {
         super.paint(g);
         painter.paint(g);
     }
-
-
 }

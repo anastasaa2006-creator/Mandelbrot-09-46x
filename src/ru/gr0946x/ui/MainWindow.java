@@ -9,6 +9,7 @@ import ru.gr0946x.ui.painting.Painter;
 import ru.gr0946x.ui.fractals.FractalState;
 import ru.gr0946x.ui.painting.TourDialog;
 
+
 import java.io.File;
 import java.util.Stack;
 import javax.swing.*;
@@ -30,9 +31,9 @@ public class MainWindow extends JFrame {
 
     private final SelectablePanel mainPanel;
     private final Painter painter;
-    private final Fractal mandelbrot;
+    private final Mandelbrot mandelbrot;
     private final Converter conv;
-  
+
     private Stack<FractalState> undoStack = new Stack<>();
     private Stack<FractalState> redoStack = new Stack<>();
     private static final int MAX_UNDO_STEPS = 100;
@@ -48,6 +49,27 @@ public class MainWindow extends JFrame {
         }
     }
 
+    private static class RainbowScheme implements ColorScheme {
+        @Override
+        public Color getColor(float value) {
+            if (value >= 0.999f) return Color.BLACK;
+            float hue = value * 2.0f;
+            if (hue > 1.0f) hue = 2.0f - hue;
+            return new Color(Color.HSBtoRGB(hue, 1.0f, 1.0f));
+        }
+    }
+
+    private static class HeatScheme implements ColorScheme {
+        @Override
+        public Color getColor(float value) {
+            if (value >= 0.999f) return Color.BLACK;
+            float r = Math.min(1.0f, value * 3.0f);
+            float g = Math.min(1.0f, value * 1.5f);
+            float b = 0;
+            return new Color(r, g, b);
+        }
+    }
+
     public MainWindow() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(800, 650));
@@ -59,7 +81,7 @@ public class MainWindow extends JFrame {
         mainPanel = new SelectablePanel(painter, conv);
         mainPanel.setBackground(Color.WHITE);
         mainPanel.addSelectListener((r) -> {
-            
+
             saveCurrentStateToUndo();
             clearRedoStack();
 
@@ -86,6 +108,10 @@ public class MainWindow extends JFrame {
 
             conv.setXShape(xMin, xMax);
             conv.setYShape(yMin, yMax);
+
+            double zoomLevel = conv.getXMax() - conv.getXMin();
+            mandelbrot.updateIterationsByZoom(zoomLevel);
+
             mainPanel.repaint();
         });
 
@@ -150,16 +176,8 @@ public class MainWindow extends JFrame {
         redoItem.addActionListener(e -> redo());
         editMenu.add(redoItem);
 
-        JMenu viewMenu = new JMenu("Вид");
-        JMenuItem zoomInItem = new JMenuItem("Увеличить");
-        viewMenu.add(zoomInItem);
-        JMenuItem zoomOutItem = new JMenuItem("Уменьшить");
-        viewMenu.add(zoomOutItem);
-        viewMenu.addSeparator();
-        JMenuItem resetViewItem = new JMenuItem("Сбросить вид");
-        viewMenu.add(resetViewItem);
-
         JMenu fractalMenu = new JMenu("Фрактал");
+
         JMenuItem juliaItem = new JMenuItem("Показать Жюлиа по точке...");
         juliaItem.addActionListener(e -> {
             String xInput = JOptionPane.showInputDialog(this, "Введите X (действительная часть)");
@@ -178,10 +196,42 @@ public class MainWindow extends JFrame {
             }
         });
         fractalMenu.add(juliaItem);
+
         fractalMenu.addSeparator();
+
         JMenuItem colorSchemeItem = new JMenuItem("Цветовая схема");
+        colorSchemeItem.addActionListener(e -> {
+            ColorScheme[] schemes = {
+                    new DefaultColorScheme(),
+                    new RainbowScheme(),
+                    new HeatScheme()
+            };
+            String[] names = {"По умолчанию", "Радужная", "Огненная"};
+            int choice = JOptionPane.showOptionDialog(this, "Выберите цветовую схему", "Цветовая схема",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, names, names[0]);
+            if (choice >= 0) {
+                FractalPainter newPainter = new FractalPainter(mandelbrot, conv, schemes[choice]);
+                mainPanel.setPainter(newPainter);
+                mainPanel.repaint();
+            }
+        });
         fractalMenu.add(colorSchemeItem);
-        JMenuItem iterationsItem = new JMenuItem("Настройка итераций");
+
+        JMenuItem iterationsItem = new JMenuItem("Настройка итераций...");
+        iterationsItem.addActionListener(e -> {
+            String input = JOptionPane.showInputDialog(this,
+                    "Максимум итераций (50–5000):\nТекущее: " + mandelbrot.getMaxIterations(),
+                    String.valueOf(mandelbrot.getMaxIterations()));
+            if (input != null) {
+                try {
+                    int val = Integer.parseInt(input);
+                    mandelbrot.setMaxIterations(val);
+                    mainPanel.repaint();
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Введите целое число!");
+                }
+            }
+        });
         fractalMenu.add(iterationsItem);
 
         JMenu tourMenu = new JMenu("Экскурсия");
@@ -196,7 +246,6 @@ public class MainWindow extends JFrame {
 
         menuBar.add(fileMenu);
         menuBar.add(editMenu);
-        menuBar.add(viewMenu);
         menuBar.add(fractalMenu);
         menuBar.add(tourMenu);
         menuBar.add(helpMenu);
@@ -205,7 +254,7 @@ public class MainWindow extends JFrame {
 
     private void showAboutDialog() {
         JOptionPane.showMessageDialog(this,
-                "Mandelbrot Fractal\nВерсия 1.0\n\nРазработчики:\n• Анастасия\n• Алина\n• Анеля\n• Настя\n• Кянан\n• Каир",
+                "Mandelbrot Fractal\nВерсия 1.0\n\nРазработчики:\n• Анастасия А\n• Алина\n• Анеля\n• Анастасия М\n• Кянан\n• Каир",
                 "О программе",
                 JOptionPane.INFORMATION_MESSAGE);
     }
@@ -240,7 +289,8 @@ public class MainWindow extends JFrame {
                 FractalState state = new FractalState(
                         conv.getXMin(), conv.getXMax(),
                         conv.getYMin(), conv.getYMax(),
-                        painter.getWidth(), painter.getHeight()
+                        painter.getWidth(), painter.getHeight(),
+                        mandelbrot.getMaxIterations()
                 );
                 oos.writeObject(state);
                 JOptionPane.showMessageDialog(this, "Фрактал сохранён!");
@@ -263,6 +313,7 @@ public class MainWindow extends JFrame {
                 saveCurrentStateToUndo();
                 clearRedoStack();
                 applyState(state);
+                mandelbrot.setMaxIterations(state.getMaxIterations());
                 mainPanel.repaint();
                 JOptionPane.showMessageDialog(this, "Фрактал загружен!");
             } catch (IOException | ClassNotFoundException ex) {
@@ -272,26 +323,24 @@ public class MainWindow extends JFrame {
     }
 
     private void saveCurrentStateToUndo() {
-        // Берем реальные размеры из панели
         int currentWidth = mainPanel.getWidth();
         int currentHeight = mainPanel.getHeight();
 
-        // Если панель еще не отрисована, берем размеры окна
         if (currentWidth <= 0) currentWidth = getWidth();
         if (currentHeight <= 0) currentHeight = getHeight();
-
-        // Если все еще 0, ставим значения по умолчанию
         if (currentWidth <= 0) currentWidth = 800;
         if (currentHeight <= 0) currentHeight = 650;
 
         FractalState state = new FractalState(
                 conv.getXMin(), conv.getXMax(),
                 conv.getYMin(), conv.getYMax(),
-                currentWidth, currentHeight
+                currentWidth, currentHeight,
+                mandelbrot.getMaxIterations()
         );
         undoStack.push(state);
         while (undoStack.size() > MAX_UNDO_STEPS) undoStack.remove(0);
     }
+
     private void clearRedoStack() {
         redoStack.clear();
     }
@@ -302,28 +351,22 @@ public class MainWindow extends JFrame {
             return;
         }
 
-        // Сохраняем текущее состояние в redo
         FractalState currentState = new FractalState(
                 conv.getXMin(), conv.getXMax(),
                 conv.getYMin(), conv.getYMax(),
-                mainPanel.getWidth(), mainPanel.getHeight()
+                mainPanel.getWidth(), mainPanel.getHeight(),
+                mandelbrot.getMaxIterations()
         );
         redoStack.push(currentState);
-
-        // Удаляем текущее состояние
         undoStack.pop();
-
-        // Восстанавливаем предыдущее
         FractalState previousState = undoStack.peek();
 
-        // Применяем
         conv.setXShape(previousState.getXMin(), previousState.getXMax());
         conv.setYShape(previousState.getYMin(), previousState.getYMax());
         painter.setWidth(previousState.getWidth());
         painter.setHeight(previousState.getHeight());
         mainPanel.updateConverter(conv);
 
-        // Перерисовываем
         mainPanel.revalidate();
         mainPanel.repaint();
     }
@@ -342,15 +385,10 @@ public class MainWindow extends JFrame {
     private void applyState(FractalState state) {
         conv.setXShape(state.getXMin(), state.getXMax());
         conv.setYShape(state.getYMin(), state.getYMax());
-
-        // Устанавливаем размеры painter
         painter.setWidth(state.getWidth());
         painter.setHeight(state.getHeight());
-
-        // Обновляем конвертер в панели
         mainPanel.updateConverter(conv);
-
-        // Перерисовываем
+        mandelbrot.setMaxIterations(state.getMaxIterations());   // ← ЭТА СТРОКА
         mainPanel.revalidate();
         mainPanel.repaint();
     }
@@ -365,7 +403,6 @@ public class MainWindow extends JFrame {
             public void actionPerformed(ActionEvent e) { redo(); }
         });
     }
-    // ========== МЕТОДЫ ДЛЯ ЭКСКУРСИИ (ПУНКТ 11) ==========
 
     public double getCurrentXMin() {
         return conv.getXMin();

@@ -27,7 +27,7 @@ public class MainWindow extends JFrame {
 
     private final SelectablePanel mainPanel;
     private final Painter painter;
-    private final Fractal mandelbrot;
+    private final Mandelbrot mandelbrot;
     private final Converter conv;
   
     private Stack<FractalState> undoStack = new Stack<>();
@@ -83,6 +83,8 @@ public class MainWindow extends JFrame {
 
             conv.setXShape(xMin, xMax);
             conv.setYShape(yMin, yMax);
+            double zoomLevel = conv.getXMax() - conv.getXMin();
+            mandelbrot.updateIterationsByZoom(zoomLevel);
             mainPanel.repaint();
         });
 

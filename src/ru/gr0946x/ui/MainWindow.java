@@ -6,7 +6,7 @@ import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
-import ru.gr0946x.model.FractalState;
+import ru.gr0946x.ui.fractals.FractalState;
 
 import java.io.File;
 import java.util.Stack;
@@ -252,7 +252,8 @@ public class MainWindow extends JFrame {
                 FractalState state = new FractalState(
                         conv.getXMin(), conv.getXMax(),
                         conv.getYMin(), conv.getYMax(),
-                        painter.getWidth(), painter.getHeight()
+                        painter.getWidth(), painter.getHeight(),
+                        mandelbrot.getMaxIterations()
                 );
                 oos.writeObject(state);
                 JOptionPane.showMessageDialog(this, "Фрактал сохранён!");
@@ -299,7 +300,8 @@ public class MainWindow extends JFrame {
         FractalState state = new FractalState(
                 conv.getXMin(), conv.getXMax(),
                 conv.getYMin(), conv.getYMax(),
-                currentWidth, currentHeight
+                currentWidth, currentHeight,
+                mandelbrot.getMaxIterations()
         );
         undoStack.push(state);
         while (undoStack.size() > MAX_UNDO_STEPS) undoStack.remove(0);
@@ -318,7 +320,8 @@ public class MainWindow extends JFrame {
         FractalState currentState = new FractalState(
                 conv.getXMin(), conv.getXMax(),
                 conv.getYMin(), conv.getYMax(),
-                mainPanel.getWidth(), mainPanel.getHeight()
+                mainPanel.getWidth(), mainPanel.getHeight(),
+                mandelbrot.getMaxIterations()
         );
         redoStack.push(currentState);
 

@@ -7,6 +7,8 @@ import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
 import ru.gr0946x.ui.fractals.FractalState;
+import ru.gr0946x.ui.painting.TourDialog;
+
 
 import java.io.File;
 import java.util.Stack;
@@ -22,6 +24,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.FileInputStream;
 import static java.lang.Math.*;
+import ru.gr0946x.ui.fractals.KeyFrame;
+import java.util.List;
 
 public class MainWindow extends JFrame {
 
@@ -213,7 +217,6 @@ public class MainWindow extends JFrame {
         });
         fractalMenu.add(colorSchemeItem);
 
-        // === ЗАДАЧА 10: ПУНКТ МЕНЮ ДЛЯ НАСТРОЙКИ ИТЕРАЦИЙ ===
         JMenuItem iterationsItem = new JMenuItem("Настройка итераций...");
         iterationsItem.addActionListener(e -> {
             String input = JOptionPane.showInputDialog(this,
@@ -233,6 +236,7 @@ public class MainWindow extends JFrame {
 
         JMenu tourMenu = new JMenu("Экскурсия");
         JMenuItem startTourItem = new JMenuItem("Начать экскурсию...");
+        startTourItem.addActionListener(e -> showTourDialog());
         tourMenu.add(startTourItem);
 
         JMenu helpMenu = new JMenu("Помощь");
@@ -398,5 +402,68 @@ public class MainWindow extends JFrame {
         getRootPane().getActionMap().put("redo", new AbstractAction() {
             public void actionPerformed(ActionEvent e) { redo(); }
         });
+    }
+
+    public double getCurrentXMin() {
+        return conv.getXMin();
+    }
+
+    public double getCurrentXMax() {
+        return conv.getXMax();
+    }
+
+    public double getCurrentYMin() {
+        return conv.getYMin();
+    }
+
+    public double getCurrentYMax() {
+        return conv.getYMax();
+    }
+
+    public void animateTour(List<KeyFrame> keyframes) {
+        new Thread(() -> {
+            for (int i = 0; i < keyframes.size() - 1; i++) {
+                KeyFrame start = keyframes.get(i);
+                KeyFrame end = keyframes.get(i + 1);
+
+                double startXMin = start.getXMin();
+                double startXMax = start.getXMax();
+                double startYMin = start.getYMin();
+                double startYMax = start.getYMax();
+
+                double endXMin = end.getXMin();
+                double endXMax = end.getXMax();
+                double endYMin = end.getYMin();
+                double endYMax = end.getYMax();
+
+                int steps = 50;
+                long stepDelay = (long) (start.getDurationSeconds() * 1000 / steps);
+
+                for (int step = 0; step <= steps; step++) {
+                    double t = (double) step / steps;
+
+                    double xMin = startXMin + (endXMin - startXMin) * t;
+                    double xMax = startXMax + (endXMax - startXMax) * t;
+                    double yMin = startYMin + (endYMin - startYMin) * t;
+                    double yMax = startYMax + (endYMax - startYMax) * t;
+
+                    conv.setXShape(xMin, xMax);
+                    conv.setYShape(yMin, yMax);
+                    mainPanel.repaint();
+
+                    try {
+                        Thread.sleep(stepDelay);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            JOptionPane.showMessageDialog(MainWindow.this, "Экскурсия завершена!");
+        }).start();
+    }
+
+    private void showTourDialog() {
+        TourDialog dialog = new TourDialog(this);
+        dialog.setVisible(true);
     }
 }

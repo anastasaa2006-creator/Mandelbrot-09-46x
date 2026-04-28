@@ -180,7 +180,21 @@ public class MainWindow extends JFrame {
         fractalMenu.addSeparator();
         JMenuItem colorSchemeItem = new JMenuItem("Цветовая схема");
         fractalMenu.add(colorSchemeItem);
-        JMenuItem iterationsItem = new JMenuItem("Настройка итераций");
+        JMenuItem iterationsItem = new JMenuItem("Настройка итераций...");
+        iterationsItem.addActionListener(e -> {
+            String input = JOptionPane.showInputDialog(this,
+                    "Максимум итераций (50–5000):\nТекущее: " + mandelbrot.getMaxIterations(),
+                    String.valueOf(mandelbrot.getMaxIterations()));
+            if (input != null) {
+                try {
+                    int val = Integer.parseInt(input);
+                    mandelbrot.setMaxIterations(val);
+                    mainPanel.repaint();
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Введите целое число!");
+                }
+            }
+        });
         fractalMenu.add(iterationsItem);
 
         JMenu tourMenu = new JMenu("Экскурсия");

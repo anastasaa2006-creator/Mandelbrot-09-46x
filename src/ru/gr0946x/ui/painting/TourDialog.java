@@ -103,4 +103,5 @@ public class TourDialog extends JDialog {
         new Thread(() -> mainWindow.animateTour(keyframes)).start();
         dispose();
     }
+
 }

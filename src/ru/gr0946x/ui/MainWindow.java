@@ -6,7 +6,7 @@ import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
-import ru.gr0946x.model.FractalState;
+import ru.gr0946x.ui.fractals.FractalState;
 
 import java.io.File;
 import java.util.Stack;

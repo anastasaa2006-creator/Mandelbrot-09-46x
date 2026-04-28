@@ -1,4 +1,4 @@
-package ru.gr0946x.model;
+package ru.gr0946x.ui.fractals;
 
 import java.io.Serializable;
 

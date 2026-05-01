@@ -8,7 +8,9 @@ import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
 import ru.gr0946x.ui.fractals.FractalState;
 import ru.gr0946x.ui.painting.TourDialog;
-
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 import java.io.File;
 import java.util.Stack;
@@ -158,8 +160,10 @@ public class MainWindow extends JFrame {
         fileMenu.addSeparator();
 
         JMenuItem saveJpgItem = new JMenuItem("Сохранить как JPG...");
+        saveJpgItem.addActionListener(e -> saveImage("jpg"));
         fileMenu.add(saveJpgItem);
         JMenuItem savePngItem = new JMenuItem("Сохранить как PNG...");
+        savePngItem.addActionListener(e -> saveImage("png"));
         fileMenu.add(savePngItem);
 
         fileMenu.addSeparator();
@@ -465,5 +469,34 @@ public class MainWindow extends JFrame {
     private void showTourDialog() {
         TourDialog dialog = new TourDialog(this);
         dialog.setVisible(true);
+    }
+
+    private void saveImage(String format) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("fractal." + format));
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String path = chooser.getSelectedFile().getPath();
+            if (!path.toLowerCase().endsWith("." + format)) path += "." + format;
+
+            int w = mainPanel.getWidth();
+            int h = mainPanel.getHeight();
+            BufferedImage image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            mainPanel.paint(image.getGraphics());
+
+            Graphics2D g2d = image.createGraphics();
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 14));
+            String coords = String.format("X: [%.3f .. %.3f]  Y: [%.3f .. %.3f]",
+                    conv.getXMin(), conv.getXMax(), conv.getYMin(), conv.getYMax());
+            g2d.drawString(coords, 10, 20);
+            g2d.dispose();
+
+            try {
+                ImageIO.write(image, format, new File(path));
+                JOptionPane.showMessageDialog(this, "Сохранено: " + path);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Ошибка: " + e.getMessage());
+            }
+        }
     }
 }
